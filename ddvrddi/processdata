@@ -1,0 +1,60 @@
+import os
+import csv
+from PIL import Image
+from tqdm import tqdm
+
+
+def rotate_and_concatenate(image_path, angle_a, angle_b, save_path):
+    original_image = Image.open(image_path).convert("RGBA")
+
+    width, height = original_image.size
+    image_a = original_image.crop((0, 0, width // 2, height))
+    image_b = original_image.crop((width // 2, 0, width, height))
+
+    rotated_a = image_a.rotate(angle_a, expand=True)
+    rotated_b = image_b.rotate(angle_b, expand=True)
+
+    rotated_a_with_bg = Image.new("RGBA", rotated_a.size, (255, 255, 255, 255))
+    rotated_a_with_bg.paste(rotated_a, (0, 0), rotated_a)
+
+    rotated_b_with_bg = Image.new("RGBA", rotated_b.size, (255, 255, 255, 255))
+    rotated_b_with_bg.paste(rotated_b, (0, 0), rotated_b)
+
+    rotated_a_with_bg = rotated_a_with_bg.resize((width // 2, height))
+    rotated_b_with_bg = rotated_b_with_bg.resize((width // 2, height))
+
+    new_image = Image.new('RGBA', (width, height), (255, 255, 255, 255))
+    new_image.paste(rotated_a_with_bg, (0, 0), rotated_a_with_bg)
+    new_image.paste(rotated_b_with_bg, (width // 2, 0), rotated_b_with_bg)
+
+    new_image_rgb = new_image.convert("RGB")
+    new_image_rgb.save(save_path, format='PNG')
+
+def process_images_in_batch(input_folder, output_folder, csv_file, angle_a, angle_b):
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Original Image Path", "Processed Image Path"])
+        
+        images = [f for f in os.listdir(input_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        
+        for image_name in tqdm(images, desc="Processing Images", unit="image"):
+            input_image_path = os.path.join(input_folder, image_name)
+            output_image_name = f"processed_{image_name}"
+            output_image_path = os.path.join(output_folder, output_image_name)
+            
+            rotate_and_concatenate(input_image_path, angle_a, angle_b, output_image_path)
+            writer.writerow([input_image_path, output_image_path])
+
+
+
+
+input_folder = "traindata1" 
+output_folder = "rotate14"  
+csv_file = "testrotate14.csv"  # save file
+angle_a = 0  # rotate angle of drug a
+angle_b = 120  
+
+process_images_in_batch(input_folder, output_folder, csv_file, angle_a, angle_b)
